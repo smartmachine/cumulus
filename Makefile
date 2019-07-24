@@ -20,12 +20,12 @@ $(TEST_STAMP): $(GOFILES)
 	@go test ./pkg/...
 	@touch $@
 
-compile: $(GOFILES)
+cumulus: $(GOFILES)
 	$(info Compiling project)
 	@go build -v $(LDFLAGS)
 
 .phony: build
-build: compile ## Build all binary artifacts
+build: cumulus ## Build all binary artifacts
 
 .phony: clean
 clean: ## Clean all build artifacts
