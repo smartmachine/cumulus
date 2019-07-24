@@ -16,6 +16,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(checkCmd)
+	checkCmd.Flags().BoolVarP(&verbose,"verbose", "v", false, "Show extra verbose check output.")
 }
 
 var checkCmd = &cobra.Command{
@@ -24,6 +25,8 @@ var checkCmd = &cobra.Command{
 	Long:  `Makes sure that we have valid credentials and roles to be able to provision cloudy stuff`,
 	Run:   check,
 }
+
+var verbose bool
 
 func check(cmd *cobra.Command, args []string) {
 
@@ -59,12 +62,12 @@ func check(cmd *cobra.Command, args []string) {
 		fmt.Println("Unable to get shared config.")
 	}
 
-	fmt.Printf("%sProfile: %s\n", emoji.Sprint(":sparkles:"), shared.Profile)
+	fmt.Printf("%sProfile: %s\n", emoji.Sprint(":name_badge:"), shared.Profile)
 
 	assumedRole := false
 
 	if shared.AssumeRole.RoleARN != "" {
-		fmt.Printf("%sAssumed Role: %s\n", emoji.Sprint(":sparkles:"), shared.AssumeRole.RoleARN)
+		fmt.Printf("%sAssumed Role: %s\n", emoji.Sprint(":tophat:"), shared.AssumeRole.RoleARN)
 		assumedRole = true
 	}
 
@@ -104,6 +107,9 @@ func check(cmd *cobra.Command, args []string) {
 
 		for _, group := range listGroupsRes.Groups {
 
+			fmt.Println("     Group:")
+			fmt.Printf("       Name: %s\n", *group.GroupName)
+
 			polReq := iamSvc.ListAttachedGroupPoliciesRequest(&iam.ListAttachedGroupPoliciesInput{GroupName: group.GroupName})
 			polRes, err := polReq.Send(context.Background())
 
@@ -112,9 +118,50 @@ func check(cmd *cobra.Command, args []string) {
 				fmt.Printf("Unable to get group policies: %+v\n", err)
 			}
 
-			fmt.Printf("%sPolicies for group %s: %+v\n", emoji.Sprint(":sparkles:"), *group.GroupName, polRes.AttachedPolicies)
+			for _, policy := range polRes.AttachedPolicies {
+				fmt.Println("       Policy:")
 
+				polReq := iamSvc.GetPolicyRequest(&iam.GetPolicyInput{PolicyArn: policy.PolicyArn})
+				polRes, err := polReq.Send(context.Background())
 
+				if err != nil {
+					passed = false
+					fmt.Printf("Unable to get role policies: %+v\n", err)
+				}
+
+				fmt.Printf("         Name: %s\n", *polRes.Policy.PolicyName)
+
+				if polRes.Policy.Description != nil {
+					fmt.Printf("         Description: %s\n", *polRes.Policy.Description)
+				}
+
+				if verbose {
+
+					polVerReq := iamSvc.GetPolicyVersionRequest(&iam.GetPolicyVersionInput{
+						PolicyArn: polRes.Policy.Arn,
+						VersionId: polRes.Policy.DefaultVersionId,
+					})
+					polVerRes, err := polVerReq.Send(context.Background())
+
+					if err != nil {
+						passed = false
+						fmt.Printf("Unable to get policy document: %+v\n", err)
+					}
+
+					doc, err := url.QueryUnescape(*polVerRes.PolicyVersion.Document)
+					if err != nil {
+						passed = false
+						fmt.Printf("Unable to parse document: %+v\n", err)
+					}
+
+					fmt.Println("         Document:")
+					for _, line := range strings.Split(doc, "\n") {
+						fmt.Printf("           %s\n", line)
+					}
+
+				}
+
+			}
 
 		}
 
@@ -139,7 +186,7 @@ func check(cmd *cobra.Command, args []string) {
 			fmt.Printf("Unable to get role: %+v\n", err)
 		}
 
-		fmt.Printf("%sRole: %+v\n", emoji.Sprint(":sparkles:"), roleRes.Role)
+		fmt.Printf("%sRole: %s\n", emoji.Sprint(":sparkles:"), *roleRes.Role.RoleName)
 
 		polReq := iamSvc.ListAttachedRolePoliciesRequest(&iam.ListAttachedRolePoliciesInput{RoleName: &roleName})
 		polRes, err := polReq.Send(context.Background())
@@ -149,7 +196,7 @@ func check(cmd *cobra.Command, args []string) {
 			fmt.Printf("Unable to get role policies: %+v\n", err)
 		}
 
-		fmt.Printf("%sPolicies: %+v\n", emoji.Sprint(":sparkles:"), polRes.AttachedPolicies)
+		fmt.Println("     Policy:")
 
 		for _, pol := range polRes.AttachedPolicies {
 
@@ -161,26 +208,36 @@ func check(cmd *cobra.Command, args []string) {
 				fmt.Printf("Unable to get role policies: %+v\n", err)
 			}
 
-			fmt.Printf("%sPolicy: %+v\n", emoji.Sprint(":sparkles:"), polRes.Policy)
-
-			polVerReq := iamSvc.GetPolicyVersionRequest(&iam.GetPolicyVersionInput{
-				PolicyArn: polRes.Policy.Arn,
-				VersionId: polRes.Policy.DefaultVersionId,
-			})
-			polVerRes,err := polVerReq.Send(context.Background())
-
-			if err != nil {
-				passed = false
-				fmt.Printf("Unable to get policy document: %+v\n", err)
+			fmt.Printf("       Name:        %s\n", *polRes.Policy.PolicyName)
+			if polRes.Policy.Description != nil {
+				fmt.Printf("       Description: %s\n", *polRes.Policy.Description)
 			}
 
-			doc, err := url.QueryUnescape(*polVerRes.PolicyVersion.Document)
-			if err != nil {
-				passed = false
-				fmt.Printf("Unable to parse document: %+v\n", err)
-			}
+			if verbose {
 
-			fmt.Printf("%sPolicy Document: %s\n", emoji.Sprint(":sparkles:"), doc)
+				polVerReq := iamSvc.GetPolicyVersionRequest(&iam.GetPolicyVersionInput{
+					PolicyArn: polRes.Policy.Arn,
+					VersionId: polRes.Policy.DefaultVersionId,
+				})
+				polVerRes, err := polVerReq.Send(context.Background())
+
+				if err != nil {
+					passed = false
+					fmt.Printf("Unable to get policy document: %+v\n", err)
+				}
+
+				doc, err := url.QueryUnescape(*polVerRes.PolicyVersion.Document)
+				if err != nil {
+					passed = false
+					fmt.Printf("Unable to parse document: %+v\n", err)
+				}
+
+				fmt.Println("       Document:")
+				for _, line := range strings.Split(doc, "\n") {
+					fmt.Printf("         %s\n", line)
+				}
+
+			}
 		}
 
 
