@@ -56,7 +56,7 @@ func check(cmd *cobra.Command, args []string) {
 
 	if !ok {
 		passed = false
-		fmt.Printf("Unable to get shared config.\n", err)
+		fmt.Println("Unable to get shared config.")
 	}
 
 	fmt.Printf("%sProfile: %s\n", emoji.Sprint(":sparkles:"), shared.Profile)
@@ -91,7 +91,7 @@ func check(cmd *cobra.Command, args []string) {
 			fmt.Printf("Unable to get current user: %+v\n", err)
 		}
 
-		fmt.Printf("%sUser: %+v\n", emoji.Sprint(":sparkles:"), userRes.User)
+		fmt.Printf("%sUserName: %s\n", emoji.Sprint(":sparkles:"), *userRes.User.UserName)
 
 		listGroupsReq := iamSvc.ListGroupsForUserRequest(&iam.ListGroupsForUserInput{UserName: userRes.User.UserName})
 		listGroupsRes, err := listGroupsReq.Send(context.Background())
@@ -101,7 +101,23 @@ func check(cmd *cobra.Command, args []string) {
 			fmt.Printf("Unable to get caller groups: %+v\n", err)
 		}
 
-		fmt.Printf("%sCaller groups: %+v\n", emoji.Sprint(":sparkles:"), listGroupsRes.Groups)
+
+		for _, group := range listGroupsRes.Groups {
+
+			polReq := iamSvc.ListAttachedGroupPoliciesRequest(&iam.ListAttachedGroupPoliciesInput{GroupName: group.GroupName})
+			polRes, err := polReq.Send(context.Background())
+
+			if err != nil {
+				passed = false
+				fmt.Printf("Unable to get group policies: %+v\n", err)
+			}
+
+			fmt.Printf("%sPolicies for group %s: %+v\n", emoji.Sprint(":sparkles:"), *group.GroupName, polRes.AttachedPolicies)
+
+
+
+		}
+
 
 	} else {
 
