@@ -1,6 +1,8 @@
 package client
 
 import (
+	"context"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"os"
 	"runtime"
 	"testing"
@@ -18,14 +20,29 @@ func UserHomeDir() string {
 }
 
 func TestClient(t *testing.T) {
-	want := "SharedConfigCredentials: " + UserHomeDir() + "/.aws/credentials"
-	got, err := Client()
-
-	if  err != nil {
-		t.Errorf("Error getting client: %+v", err)
+	client,err := New("", "")
+	if err != nil {
+		t.Errorf("unable to obtain client: %+v", err)
 	}
-
-	if got != want {
-		t.Errorf("Client() = %q, want %q", got, want)
+	svc := sts.New(client.Config)
+	ident := svc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
+	resp, err := ident.Send(context.Background())
+	if err != nil {
+		t.Errorf("unable to get caller identity: %+v", err)
 	}
+	t.Log(resp)
+}
+
+func TestClientWithProfile(t *testing.T)  {
+	client,err := New("admin", "")
+	if err != nil {
+		t.Errorf("unable to obtain client: %+v", err)
+	}
+	svc := sts.New(client.Config)
+	ident := svc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
+	resp, err := ident.Send(context.Background())
+	if err != nil {
+		t.Errorf("unable to get caller identity: %+v", err)
+	}
+	t.Log(resp)
 }

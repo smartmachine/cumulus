@@ -1,18 +1,19 @@
 VERSION := $(shell git describe --tags --dirty)
 BUILD := $(shell git rev-parse --short HEAD)
-GOFILES := $(shell find . -type f -name '*.go')
-LDFLAGS := -ldflags "-X=main.Version=$(VERSION) -X=main.Build=$(BUILD)"
+GOFILES := $(shell find . -not -path './vendor*' -type f -name '*.go')
+LDFLAGS := -ldflags "-X=go.smartmachine.io/cumulus/cmd.Version=$(VERSION) -X=go.smartmachine.io/cumulus/cmd.Build=$(BUILD)"
 TEST_STAMP := .test.stamp
 
 .phony: all
-all: check ensure api test build ## Generate and build everything
+all: dep test build ## Generate and build everything
 
 .phony: test
 test: $(TEST_STAMP) ## Run unit tests
 
 .phony: dep
 dep: ## Make sure all dependencies are up to date
-	@go mod vendor -v
+	@go mod tidy
+	@go mod vendor
 
 $(TEST_STAMP): $(GOFILES)
 	$(info Running unit tests)
@@ -24,7 +25,7 @@ compile: $(GOFILES)
 	@go build -v $(LDFLAGS)
 
 .phony: build
-build: dep compile ## Build all binary artifacts
+build: compile ## Build all binary artifacts
 
 .phony: clean
 clean: ## Clean all build artifacts

@@ -1,26 +1,31 @@
 package client
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 )
 
+type Client struct {
+	Config aws.Config
+}
+
 // Client instantiates a new client
-func Client() (string, error) {
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Profile: "admin",
-	})
+func New(profile string, region string) (Client, error) {
+	var cfg aws.Config
+	var err error
+	var client Client
 
-	if err != nil {
-		return "", err
+	if profile == "" {
+		cfg, err = external.LoadDefaultAWSConfig()
+	} else {
+		cfg, err = external.LoadDefaultAWSConfig(external.WithSharedConfigProfile(profile))
 	}
 
-	ident, err := sts.New(sess).GetCallerIdentity(&sts.GetCallerIdentityInput{})
-
 	if err != nil {
-		return "", err
+		return client, err
 	}
 
-	return ident.String(), nil
+	client.Config = cfg
+
+	return Client{Config: cfg}, nil
 }
