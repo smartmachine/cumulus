@@ -16,10 +16,8 @@ to distribute entire platforms with a single binary distributable.`,
 var Version string
 var Build   string
 
-var Profile string
-
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&Profile, "profile", "p", "", "Profile to use.")
+	rootCmd.PersistentFlags().String("profile", "", "Profile to use.")
 }
 
 func Execute() {
