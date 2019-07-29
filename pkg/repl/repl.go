@@ -3,6 +3,7 @@ package repl
 import (
 	"bufio"
 	"fmt"
+	"go.smartmachine.io/cumulus/pkg/evaluator"
 	"go.smartmachine.io/cumulus/pkg/lexer"
 	"go.smartmachine.io/cumulus/pkg/parser"
 	"io"
@@ -30,8 +31,11 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, program.String())
-		io.WriteString(out, "\n")
+		evaluated := evaluator.Eval(program)
+		if evaluated != nil {
+			io.WriteString(out, evaluated.Inspect())
+			io.WriteString(out, "\n")
+		}
 	}
 }
 
