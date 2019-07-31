@@ -21,10 +21,9 @@ func Start(in io.Reader, out io.Writer) {
 		Prompt: PROMPT,
 		StdinWriter: out,
 		Stderr: out,
-
+		HistoryFile: ".cumulus.hist",
+		HistoryLimit: 1000,
 	})
-
-
 
 	if err != nil {
 		fmt.Printf("unable to start readline: %v", err)
@@ -63,7 +62,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		evaluated := evaluator.Eval(program, env)
 		if evaluated != nil {
-			write(out, evaluated.Inspect())
+			write(out, evaluated.String())
 			write(out, "\n")
 		}
 	}

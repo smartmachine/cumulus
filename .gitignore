@@ -2,3 +2,4 @@ cumulus
 vendor
 .idea
 .test.stamp
+.cumulus.hist
