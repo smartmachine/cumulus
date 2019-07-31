@@ -1,27 +1,57 @@
 package repl
 
 import (
-	"bufio"
 	"fmt"
+	"github.com/chzyer/readline"
 	"go.smartmachine.io/cumulus/pkg/evaluator"
 	"go.smartmachine.io/cumulus/pkg/lexer"
+	"go.smartmachine.io/cumulus/pkg/object"
 	"go.smartmachine.io/cumulus/pkg/parser"
 	"io"
+	"io/ioutil"
 )
 
 const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
-	scanner := bufio.NewScanner(in)
+
+	rl, err := readline.NewEx(&readline.Config{
+		Stdout: out,
+		Stdin: ioutil.NopCloser(in),
+		Prompt: PROMPT,
+		StdinWriter: out,
+		Stderr: out,
+
+	})
+
+
+
+	if err != nil {
+		fmt.Printf("unable to start readline: %v", err)
+		return
+	}
+	env := object.NewEnvironment()
 
 	for {
 		fmt.Printf(PROMPT)
-		scanned := scanner.Scan()
-		if !scanned {
+		line, err := rl.Readline()
+		if err != nil {
+			fmt.Printf("unable to read line: %v", err)
 			return
 		}
+		if line == "" {
+			continue
+		}
 
-		line := scanner.Text()
+		switch line {
+		case `\q`:
+			write(out, "Bye!\n")
+			return
+		case `\env`:
+			write(out, fmt.Sprintf("Environment: %s\n", env))
+			continue
+		}
+
 		l := lexer.New(line)
 		p := parser.New(l)
 
@@ -31,15 +61,15 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		evaluated := evaluator.Eval(program)
+		evaluated := evaluator.Eval(program, env)
 		if evaluated != nil {
-			io.WriteString(out, evaluated.Inspect())
-			io.WriteString(out, "\n")
+			write(out, evaluated.Inspect())
+			write(out, "\n")
 		}
 	}
 }
 
-const MONKEY_FACE = `        --_--
+const SHROOM = `        --_--
      (  -_    _).
    ( ~       )   )
  (( )  (    )  ()  )
@@ -52,10 +82,20 @@ const MONKEY_FACE = `        --_--
 `
 
 func printParserErrors(out io.Writer, errors []string) {
-	io.WriteString(out, MONKEY_FACE)
-	io.WriteString(out, "Woops! Mushroom cloud!\n")
-	io.WriteString(out, " parser errors:\n")
+	write(out, SHROOM)
+	write(out, "Woops! Mushroom cloud!\n")
+	write(out, " parser errors:\n")
 	for _, msg := range errors {
-		io.WriteString(out, "\t"+msg+"\n")
+		write(out, "\t"+msg+"\n")
+	}
+}
+
+func write(out io.Writer, message string) {
+	num, err := io.WriteString(out, message)
+	if num != len(message) {
+		fmt.Printf("unable to write all %d bytes to output channel (%d written)\n", len(message), num)
+	}
+	if err != nil {
+		fmt.Printf("error writing to output channel: %v", err)
 	}
 }
