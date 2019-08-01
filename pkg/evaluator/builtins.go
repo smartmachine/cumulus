@@ -1,6 +1,9 @@
 package evaluator
 
-import "go.smartmachine.io/cumulus/pkg/object"
+import (
+	"fmt"
+	"go.smartmachine.io/cumulus/pkg/object"
+)
 
 var builtins = map[string]*object.Builtin{
 	"len": {
@@ -17,6 +20,9 @@ var builtins = map[string]*object.Builtin{
 	},
 	"push": {
 		Fn: pushBuiltin,
+	},
+	"puts": {
+		Fn: putsBuiltin,
 	},
 }
 
@@ -111,4 +117,12 @@ func pushBuiltin(args ...object.Object) object.Object {
 	newElements[length] = args[1]
 
 	return &object.Array{Elements: newElements}
+}
+
+func putsBuiltin(args ...object.Object) object.Object {
+	for _, arg := range args {
+		fmt.Println(arg.String())
+	}
+
+	return NULL
 }
