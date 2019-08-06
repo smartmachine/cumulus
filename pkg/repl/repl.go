@@ -3,15 +3,17 @@ package repl
 import (
 	"fmt"
 	"github.com/chzyer/readline"
-	"go.smartmachine.io/cumulus/pkg/evaluator"
+	"go.smartmachine.io/cumulus/pkg/compiler"
 	"go.smartmachine.io/cumulus/pkg/lexer"
 	"go.smartmachine.io/cumulus/pkg/object"
 	"go.smartmachine.io/cumulus/pkg/parser"
+	"go.smartmachine.io/cumulus/pkg/vm"
 	"io"
 	"io/ioutil"
 )
 
 const PROMPT = ">> "
+const RESULT = "== "
 
 func Start(in io.Reader, out io.Writer) {
 
@@ -60,11 +62,22 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		evaluated := evaluator.Eval(program, env)
-		if evaluated != nil {
-			write(out, evaluated.String())
-			write(out, "\n")
+		comp := compiler.New()
+		err = comp.Compile(program)
+		if err != nil {
+			write(out, "Whoops! Compilation failed:\n %s\n", err)
+			continue
 		}
+
+		machine := vm.New(comp.Bytecode())
+		err = machine.Run()
+		if err != nil {
+			write(out, "Woops! Executing bytecode failed:\n %s\n", err)
+			continue
+		}
+
+		lastPopped := machine.LastPoppedStackElem()
+		write(out, "%s%s\n", RESULT, lastPopped.String())
 	}
 }
 
@@ -89,8 +102,8 @@ func printParserErrors(out io.Writer, errors []string) {
 	}
 }
 
-func write(out io.Writer, message string) {
-	num, err := io.WriteString(out, message)
+func write(out io.Writer, message string, a ...interface{}) {
+	num, err := fmt.Fprintf(out, message, a...)
 	if num != len(message) {
 		fmt.Printf("unable to write all %d bytes to output channel (%d written)\n", len(message), num)
 	}
